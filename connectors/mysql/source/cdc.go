@@ -369,12 +369,14 @@ func (d *rowDecoder) appendBinlogRow(w arrowbatch.RowWriter, row []any) error {
 			w.Null()
 			continue
 		}
-		text := valueBytes(row[i])
+		var text []byte
 		if t.binlog != nil {
 			var err error
 			if text, err = t.binlog(row[i]); err != nil {
 				return fmt.Errorf("column %q: %w", d.schema.Fields[i].Name, err)
 			}
+		} else {
+			text = valueBytes(row[i])
 		}
 		if err := t.parse(w, text); err != nil {
 			return fmt.Errorf("column %q: %w", d.schema.Fields[i].Name, err)
