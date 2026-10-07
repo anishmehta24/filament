@@ -178,16 +178,16 @@ func binlogSet(members []string) func(any) ([]byte, error) {
 			return nil, fmt.Errorf("set bitmap %#x has bits past %d members", bits, len(members))
 		}
 		out := []byte{}
-		n := 0
 		for m, member := range members {
 			if bits&(1<<m) == 0 {
 				continue
 			}
-			if n > 0 {
+			// MySQL adds the comma only after nonempty text, so an empty
+			// first member leaves no leading comma.
+			if len(out) > 0 {
 				out = append(out, ',')
 			}
 			out = append(out, member...)
-			n++
 		}
 		return out, nil
 	}

@@ -21,14 +21,15 @@ func TestAppendBinlogRowEnumSet(t *testing.T) {
 	dec := newRowDecoder("t", []column{
 		{name: "size", dataType: "enum", fullType: "enum('small','Medium','it''s')"},
 		{name: "tags", dataType: "set", fullType: "set('a','b','c')"},
+		{name: "opts", dataType: "set", fullType: "set('','x')"},
 	}, nil)
 	rows := []struct {
-		row        []any
-		size, tags string
+		row              []any
+		size, tags, opts string
 	}{
-		{[]any{int64(2), int64(5)}, "Medium", "a,c"},
-		{[]any{int64(3), int64(0)}, "it's", ""},
-		{[]any{int64(0), int64(2)}, "", "b"}, // 0 is enum's '' error value
+		{[]any{int64(2), int64(5), int64(3)}, "Medium", "a,c", "x"}, // no comma after the empty member
+		{[]any{int64(3), int64(0), int64(1)}, "it's", "", ""},
+		{[]any{int64(0), int64(2), int64(2)}, "", "b", "x"}, // 0 is enum's '' error value
 	}
 	c := &collect{}
 	b := arrowbatch.NewBuilder(arrowbatch.Schema(dec.schema), nil, arrowbatch.Options{MaxRows: len(rows)}, c)
@@ -43,12 +44,16 @@ func TestAppendBinlogRowEnumSet(t *testing.T) {
 	defer c.chunks[0].Release()
 	size := c.chunks[0].Rows().Column(0).(*array.String)
 	tags := c.chunks[0].Rows().Column(1).(*array.String)
+	opts := c.chunks[0].Rows().Column(2).(*array.String)
 	for i, r := range rows {
 		if got := size.Value(i); got != r.size {
 			t.Errorf("row %d size = %q, want %q", i, got, r.size)
 		}
 		if got := tags.Value(i); got != r.tags {
 			t.Errorf("row %d tags = %q, want %q", i, got, r.tags)
+		}
+		if got := opts.Value(i); got != r.opts {
+			t.Errorf("row %d opts = %q, want %q", i, got, r.opts)
 		}
 	}
 }
